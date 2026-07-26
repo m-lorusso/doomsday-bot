@@ -1,14 +1,10 @@
 from .base import Provider, ProviderResult, Session
 from .event import EventProvider
 from .hoyts import HoytsProvider
-from .palace import PalaceProvider
-from .ritz import RitzProvider
 
 REGISTRY = {
     "event": EventProvider,
     "hoyts": HoytsProvider,
-    "ritz": RitzProvider,
-    "palace": PalaceProvider,
 }
 
 

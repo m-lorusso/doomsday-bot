@@ -13,11 +13,10 @@ no dependencies, no browser automation, nothing to `pip install`.
 | --- | --- | --- | --- |
 | **Event** | 16, incl. **IMAX Sydney** | per-venue session API | times, screen, seats left, booking link |
 | **HOYTS** | 12, incl. **IMAX Blacktown** | `onSale` flag + full session dump | times, screen, booking link |
-| **Ritz Randwick** | 1 | `onSale` flag | "on sale", link to the site |
-| **Palace** | Central, Norton St, Moore Park | sessions array on the film's page | "sessions listed", link |
 
-Between them that's both Sydney IMAX screens and essentially every venue that
-would open a Marvel tentpole early.
+Both Sydney IMAX screens are covered, and IMAX sessions are individually
+identifiable — Event reports `ScreenTypeName: IMAX`, HOYTS reports
+`typeId: IMAX` on screen `IMAX 01`.
 
 **Event** — IMAX Sydney, George Street, Bondi Junction, Parramatta, Castle Hill,
 Macquarie, Top Ryde City, Miranda, Hurstville, Burwood, Hornsby, Liverpool,
@@ -27,15 +26,17 @@ Campbelltown, Ed Square, Drive In Blacktown, Moonlight Sydney.
 Westfield, Chatswood Mandarin, Eastgardens, Warringah Mall, Bankstown, Cronulla,
 Mt Druitt, Penrith, Wetherill Park.
 
-### Not covered, and why
+### Not covered
 
-Reading (Rouse Hill, Auburn), Dendy Newtown, Hayden Orpheum, United, Roseville.
-Reading's backend sits behind an authenticated gateway; the others render
-entirely client-side, so there's no data to read over plain HTTP. Covering them
-would mean running a headless browser on every check — a large jump in
-fragility and runtime for venues that won't be first to open Doomsday bookings
-anyway. If you want them, the honest way is a separate scheduled job using
-Playwright; say the word.
+Ritz Randwick and Palace (Central, Norton St, Moore Park) were dropped by
+choice — small venues that won't be first to open a Marvel tentpole, and
+neither could report actual session times, only a "it's bookable" flag.
+
+Reading (Rouse Hill, Auburn), Dendy Newtown, Hayden Orpheum, United and
+Roseville aren't reachable: Reading's backend sits behind an authenticated
+gateway, and the others render entirely client-side, so there's no data to read
+over plain HTTP. Covering them would mean running a headless browser on every
+check — a large jump in fragility and runtime.
 
 ## How each signal works
 
@@ -54,14 +55,6 @@ country and ignores query filters. So the cheap flag drives every run, and the
 big dump is pulled only when that flag flips — plus one forced sweep every
 `DEEP_SWEEP_HOURS` in case the flag lags reality. Note a film's `vistaId` can be
 comma-separated (`HO00008129,HO00011223`); sessions match on either.
-
-**Ritz** — same platform as HOYTS, so `/api/movies` and its `onSale` flag work
-identically. No session endpoint on a single-venue site, so the flag is all
-you get: it tells you it's bookable, not which times.
-
-**Palace** — a Next.js site, so the page ships its own data in the
-`__NEXT_DATA__` script tag. `props.pageProps.sessions` is `[]` until the film is
-bookable, which beats scraping rendered markup.
 
 ## Setup
 
@@ -118,7 +111,7 @@ python -m bot.main --test-alert  # prove Telegram delivery works
 Point it at a film that's already on sale to see a real alert render:
 
 ```bash
-MOVIE_MATCH=odyssey RELEASE_DATE=2026-07-27 PALACE_SLUG=the-odyssey python -m bot.main --dry-run --deep
+MOVIE_MATCH=odyssey RELEASE_DATE=2026-07-27 python -m bot.main --dry-run --deep
 ```
 
 ## Configuration
@@ -131,8 +124,7 @@ variable of the same name.
 | `MOVIE_MATCH` | `doomsday` | Case-insensitive substring of the film title |
 | `RELEASE_DATE` | `2026-12-17` | Date probed first each run (Event) |
 | `WATCH_FROM` | `2026-11-01` | Re-probe any Event on-sale date at/after this |
-| `PALACE_SLUG` | `avengers-doomsday` | Palace addresses films by URL slug |
-| `CHAINS` | `event,hoyts,ritz,palace` | Which providers run, and alert order |
+| `CHAINS` | `event,hoyts` | Which providers run, and alert order |
 | `DEEP_SWEEP_HOURS` | `6` | How often to force the expensive checks |
 | `HEARTBEAT_HOURS` | `24` | "Still nothing" ping cadence; `0` disables |
 | `MAX_SESSIONS_LISTED` | `6` | Sessions per cinema before "…and N more" |

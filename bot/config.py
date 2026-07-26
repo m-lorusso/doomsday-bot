@@ -20,13 +20,10 @@ RELEASE_DATE = _env("RELEASE_DATE", "2026-12-17")
 # Event on-sale date from here onwards gets a second look.
 WATCH_FROM = _env("WATCH_FROM", "2026-11-01")
 
-# Palace addresses films by URL slug rather than by search.
-PALACE_SLUG = _env("PALACE_SLUG", "avengers-doomsday")
-
 # --- Who we watch -----------------------------------------------------------
 
 # Order matters: it's the order cinemas appear in the alert.
-CHAINS = [c.strip() for c in _env("CHAINS", "event,hoyts,ritz,palace").split(",") if c.strip()]
+CHAINS = [c.strip() for c in _env("CHAINS", "event,hoyts").split(",") if c.strip()]
 
 # --- Telegram ---------------------------------------------------------------
 

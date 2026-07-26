@@ -39,6 +39,23 @@ SYDNEY = {
 # NSW, outside Greater Sydney.
 REGIONAL = {"ERINAF": "Erina", "CHARLE": "Charlestown", "GHLCIN": "Green Hills", "WWGCIN": "Warrawong"}
 
+# typeId comes through SHOUTING; .title() would give "Imax", which reads wrong
+# for exactly the screens you most want to spot.
+SCREEN_NAMES = {
+    "IMAX": "IMAX",
+    "SCREENX": "ScreenX",
+    "XTREME": "Xtremescreen",
+    "DBOX": "D-BOX",
+    "LUX": "LUX",
+    "STANDARD": "Standard",
+}
+
+
+def _screen(type_id: str | None) -> str | None:
+    if not type_id:
+        return None
+    return SCREEN_NAMES.get(type_id.upper(), type_id.title())
+
 
 class HoytsProvider(Provider):
     name = "HOYTS"
@@ -91,7 +108,7 @@ class HoytsProvider(Provider):
                     cinema=SYDNEY[cid],
                     key=f"hoyts:{s.get('id')}",
                     start=s.get("date"),
-                    screen=(s.get("typeId") or "").title() or None,
+                    screen=_screen(s.get("typeId")),
                     booking_url=(SITE + link) if link.startswith("/") else (link or None),
                 )
             )
