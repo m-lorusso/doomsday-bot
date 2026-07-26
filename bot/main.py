@@ -81,6 +81,8 @@ def build_alert(results: list, new_keys: set) -> str:
         f"found {au_datetime(now_sydney())}</i>",
         "",
     ]
+    if any(s.members_only for s in fresh):
+        lines.insert(2, "\U0001f511 <b>Members-only presale</b> — needs a Cinebuzz account")
 
     # Rank each venue: IMAX first (it sells out first), then the order the
     # provider declared its venues in, so you see the good screens up top

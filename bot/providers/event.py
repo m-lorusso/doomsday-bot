@@ -72,6 +72,10 @@ class EventProvider(Provider):
         for movie in data.get("Movies") or []:
             if needle not in (movie.get("Name") or "").lower():
                 continue
+            # Event flags member-only programming rather than hiding it, so a
+            # Cinebuzz presale still comes down this same endpoint. Worth
+            # calling out in the alert: you'll need a membership to book it.
+            members_only = bool(movie.get("ForCinebuzz"))
             for cm in movie.get("CinemaModels") or []:
                 for s in cm.get("Sessions") or []:
                     out.append(
@@ -83,6 +87,7 @@ class EventProvider(Provider):
                             screen=s.get("ScreenTypeName") or s.get("ScreenType"),
                             seats=s.get("SeatsAvailable"),
                             booking_url=s.get("BookingUrl"),
+                            members_only=members_only,
                         )
                     )
         return out

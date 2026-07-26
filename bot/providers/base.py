@@ -19,6 +19,7 @@ class Session:
     seats: int | None = None
     booking_url: str | None = None
     note: str | None = None  # used when there's no per-session detail
+    members_only: bool = False  # loyalty-scheme presale; you need an account
 
     @property
     def is_imax(self) -> bool:
