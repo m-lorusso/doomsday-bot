@@ -20,12 +20,20 @@ class Session:
     booking_url: str | None = None
     note: str | None = None  # used when there's no per-session detail
 
+    @property
+    def is_imax(self) -> bool:
+        """IMAX sells out first, so these float to the top of the alert."""
+        return "imax" in f"{self.cinema} {self.screen or ''}".lower()
+
 
 @dataclass
 class ProviderResult:
     chain: str
     sessions: list = field(default_factory=list)
-    status: str | None = None  # one-line "here's how far ahead they're selling"
+    status: str | None = None  # plain-English one-liner for the heartbeat
+    venues: int = 0
+    venue_order: list = field(default_factory=list)  # best venues first; drives alert ordering
+    movie_url: str | None = None  # the chain's page for the film, for tapping through
     error: str | None = None
 
 

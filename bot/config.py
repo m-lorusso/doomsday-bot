@@ -10,8 +10,14 @@ def _env(name, default):
 
 # --- What we're hunting -----------------------------------------------------
 
-# Matched case-insensitively against the film title each chain reports.
+# Matched case-insensitively against the film title each chain reports. Kept
+# deliberately loose so a chain writing "Avengers Doomsday" without the colon,
+# or appending "(IMAX)", still matches.
 MOVIE_MATCH = _env("MOVIE_MATCH", "doomsday")
+
+# What the notifications call it. Separate from MOVIE_MATCH, which is a
+# substring and reads badly as a headline.
+MOVIE_TITLE = _env("MOVIE_TITLE", "Avengers: Doomsday")
 
 # Advertised AU release date. Event is probed against this date directly.
 RELEASE_DATE = _env("RELEASE_DATE", "2026-12-17")
@@ -46,6 +52,10 @@ MAX_EXTRA_DATE_PROBES = int(_env("MAX_EXTRA_DATE_PROBES", "12"))
 # the alert into a wall of text split over several Telegram messages, which is
 # the opposite of useful when you're trying to move fast.
 MAX_SESSIONS_LISTED = int(_env("MAX_SESSIONS_LISTED", "6"))
+
+# Same reasoning for venues: 28 cinemas x several sessions each would span half
+# a dozen Telegram messages. Best screens lead, the rest are one tap away.
+MAX_CINEMAS_LISTED = int(_env("MAX_CINEMAS_LISTED", "8"))
 
 # HOYTS' cheap `onSale` flag drives most runs; occasionally we pull the full
 # 4.8 MB session dump anyway in case that flag lags behind the real listings.

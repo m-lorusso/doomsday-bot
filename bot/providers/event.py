@@ -20,6 +20,7 @@ import time
 import urllib.parse
 
 from .. import http
+from ..dates import au_date
 from .base import Provider, ProviderResult, Session
 
 BASE = "https://www.eventcinemas.com.au/Cinemas/GetSessions"
@@ -87,7 +88,9 @@ class EventProvider(Provider):
         return out
 
     def check(self, deep: bool = False) -> ProviderResult:
-        res = ProviderResult(chain=self.name)
+        res = ProviderResult(
+            chain=self.name, venues=len(SYDNEY), venue_order=list(SYDNEY), movie_url=MOVIE_PAGE
+        )
         horizons, failures = [], []
 
         for cinema, cid in SYDNEY.items():
@@ -115,8 +118,10 @@ class EventProvider(Provider):
 
             time.sleep(self.cfg.REQUEST_DELAY_SECONDS)
 
-        if horizons:
-            res.status = f"selling to {max(horizons)}"
+        if res.sessions:
+            res.status = f"ON SALE — {len(res.sessions)} sessions"
+        elif horizons:
+            res.status = f"listed, booking open only to {au_date(max(horizons))}"
         if failures:
             res.error = "; ".join(failures[:3])
         return res

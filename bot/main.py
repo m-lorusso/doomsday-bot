@@ -14,8 +14,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 from . import config, providers, telegram
-
-SYD = timezone(timedelta(hours=11))  # AEDT, for display only
+from .dates import au_date, au_datetime, au_short, au_time, days_until, now_sydney
 
 
 def now_utc() -> datetime:
@@ -54,58 +53,109 @@ def _cooldown_passed(iso: str, hours: float) -> bool:
 # --- messages ---------------------------------------------------------------
 
 
+def _link(text: str, url: str | None) -> str:
+    text = html.escape(text)
+    return f'<a href="{html.escape(url, quote=True)}">{text}</a>' if url else text
+
+
 def fmt_session(s) -> str:
-    bits = []
-    if s.start:
-        when = s.start
-        try:
-            when = datetime.fromisoformat(s.start).strftime("%a %d %b, %I:%M %p").replace(" 0", " ")
-        except ValueError:
-            pass
-        bits.append(f"<b>{html.escape(when)}</b>")
+    """One tappable line: the time itself is the booking link."""
+    when = au_time(s.start) if s.start else "Book"
+    bits = [f"• {_link(when, s.booking_url)}"]
     if s.screen:
         bits.append(html.escape(s.screen))
     if isinstance(s.seats, int):
         bits.append(f"{s.seats} seats")
-    if not bits and s.note:
+    if not s.start and s.note:
         bits.append(html.escape(s.note))
-    line = "  - " + " ".join(bits) if bits else "  - bookable"
-    if s.booking_url:
-        line += f' <a href="{html.escape(s.booking_url, quote=True)}">book</a>'
-    return line
+    return "  " + " · ".join(bits)
 
 
 def build_alert(results: list, new_keys: set) -> str:
-    lines = [f"\U0001f6a8 <b>{html.escape(config.MOVIE_MATCH.title())} IS ON SALE</b>", ""]
-    for r in results:
-        fresh = [s for s in r.sessions if s.key in new_keys]
-        if not fresh:
-            continue
-        lines.append(f"— <b>{html.escape(r.chain)}</b> —")
-        by_cinema = {}
-        for s in fresh:
-            by_cinema.setdefault(s.cinema, []).append(s)
-        for cinema, group in by_cinema.items():
-            group.sort(key=lambda s: s.start or "")
-            shown = group[: config.MAX_SESSIONS_LISTED]
-            lines.append(f"<b>{html.escape(cinema)}</b> ({len(group)})")
-            lines.extend(fmt_session(s) for s in shown)
-            if len(group) > len(shown):
-                lines.append(f"  ...and {len(group) - len(shown)} more")
+    fresh = [s for r in results for s in r.sessions if s.key in new_keys]
+    cinemas = {s.cinema for s in fresh}
+
+    lines = [
+        f"\U0001f6a8 <b>{html.escape(config.MOVIE_TITLE.upper())} IS ON SALE</b>",
+        f"<i>{len(fresh)} sessions across {len(cinemas)} cinemas · "
+        f"found {au_datetime(now_sydney())}</i>",
+        "",
+    ]
+
+    # Rank each venue: IMAX first (it sells out first), then the order the
+    # provider declared its venues in, so you see the good screens up top
+    # rather than whatever happens to sort alphabetically.
+    rank: dict = {}
+    for chain_i, r in enumerate(results):
+        for venue_i, venue in enumerate(r.venue_order):
+            rank[(r.chain, venue)] = (chain_i, venue_i)
+
+    by_cinema: dict = {}
+    for s in fresh:
+        by_cinema.setdefault((s.chain, s.cinema), []).append(s)
+
+    ordered = sorted(
+        by_cinema.items(),
+        key=lambda kv: (not kv[1][0].is_imax, rank.get(kv[0], (99, 99)), kv[0]),
+    )
+
+    for (chain, cinema), group in ordered[: config.MAX_CINEMAS_LISTED]:
+        star = "⭐ " if group[0].is_imax else ""
+        lines.append(f"{star}<b>{html.escape(cinema)}</b> · {html.escape(chain)}")
+
+        by_day: dict = {}
+        for s in sorted(group, key=lambda s: s.start or ""):
+            by_day.setdefault(au_short(s.start) if s.start else "", []).append(s)
+
+        shown = 0
+        for day, sessions in by_day.items():
+            if shown >= config.MAX_SESSIONS_LISTED:
+                break
+            if day:
+                lines.append(f"  <b>{html.escape(day)}</b>")
+            for s in sessions:
+                if shown >= config.MAX_SESSIONS_LISTED:
+                    break
+                lines.append(fmt_session(s))
+                shown += 1
+        extra = len(group) - shown
+        if extra:
+            lines.append(f"  <i>+ {extra} more session{'s' if extra > 1 else ''}</i>")
         lines.append("")
+
+    hidden = max(0, len(ordered) - config.MAX_CINEMAS_LISTED)
+    if hidden:
+        lines.append(f"<i>+ {hidden} more cinema{'s' if hidden > 1 else ''} — full list below</i>")
+        lines.append("")
+
+    lines.append("<b>Book direct:</b>")
+    for r in results:
+        if r.movie_url and any(s.key in new_keys for s in r.sessions):
+            lines.append(f"→ {_link(r.chain + ' — all sessions', r.movie_url)}")
     return "\n".join(lines).strip()
 
 
 def build_heartbeat(results: list) -> str:
-    stamp = now_utc().astimezone(SYD).strftime("%d %b %H:%M")
+    venues = sum(r.venues for r in results)
+    days = days_until(config.RELEASE_DATE)
+
     lines = [
-        f"✅ Checked {len(results)} chains at {stamp} AEDT — "
-        f"{html.escape(config.MOVIE_MATCH.title())} not on sale yet.",
+        f"\U0001f3ac <b>{html.escape(config.MOVIE_TITLE)}</b> — not on sale yet",
+        f"<i>{venues} Sydney cinemas checked · {au_datetime(now_sydney())}</i>",
         "",
     ]
     for r in results:
-        state = r.error and f"⚠️ {r.error[:90]}" or (r.status or "no signal")
-        lines.append(f"• <b>{html.escape(r.chain)}</b>: {html.escape(state)}")
+        if r.error:
+            lines.append(f"⚠️ <b>{html.escape(r.chain)}</b> — check failed")
+            lines.append(f"  <i>{html.escape(r.error[:110])}</i>")
+        else:
+            lines.append(f"✅ <b>{_link(r.chain, r.movie_url)}</b> · {r.venues} venues")
+            lines.append(f"  {html.escape(r.status or 'no signal')}")
+    lines.append("")
+
+    tail = f" — {days} days away" if days else ""
+    lines.append(f"\U0001f4c5 Release <b>{html.escape(au_date(config.RELEASE_DATE))}</b>{tail}")
+    lines.append("<i>Checking every 5 minutes. Next update in 24h.</i>")
     return "\n".join(lines)
 
 
@@ -123,7 +173,11 @@ def main(argv=None) -> int:
     token, chat = config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID
 
     if args.test_alert:
-        ok = telegram.send("\U0001f9ea Doomsday bot test — notifications are working.", token, chat)
+        ok = telegram.send(
+            f"\U0001f9ea <b>{html.escape(config.MOVIE_TITLE)} watch</b> — "
+            "notifications are working.",
+            token, chat,
+        )
         print("sent" if ok else "not delivered")
         return 0 if ok else 1
 
@@ -152,22 +206,23 @@ def main(argv=None) -> int:
         body = build_alert(results, new_keys)
         print("\n" + body)
         if args.dry_run:
-            print("\n(dry run — not sent, state not advanced)")
+            print("\n(dry run - not sent, state not advanced)")
         elif telegram.send(body, token, chat):
             alerted |= new_keys
     else:
         print("\nNot on sale yet.")
-        if not args.dry_run and (
-            args.force_heartbeat
-            or (config.HEARTBEAT_HOURS > 0 and _cooldown_passed(state.get("last_heartbeat", ""), config.HEARTBEAT_HOURS))
-        ):
+        heartbeat_due = config.HEARTBEAT_HOURS > 0 and _cooldown_passed(
+            state.get("last_heartbeat", ""), config.HEARTBEAT_HOURS
+        )
+        if not args.dry_run and (args.force_heartbeat or heartbeat_due):
             if telegram.send(build_heartbeat(results), token, chat, silent=True):
                 state["last_heartbeat"] = now_utc().isoformat()
 
     if errored and not args.dry_run and _cooldown_passed(state.get("last_error_alert", ""), 12):
         names = ", ".join(r.chain for r in errored)
         if telegram.send(
-            f"⚠️ Doomsday bot: {html.escape(names)} failed to check. "
+            f"⚠️ <b>{html.escape(config.MOVIE_TITLE)} watch</b> — "
+            f"{html.escape(names)} failed to check. "
             "A site may have changed or started blocking the request.",
             token, chat,
         ):
@@ -176,7 +231,9 @@ def main(argv=None) -> int:
     # No `last_run` on purpose: CI commits this file back, and a timestamp that
     # changes every run would mean a commit every few minutes.
     state["alerted_keys"] = sorted(alerted)
-    state["chain_status"] = {r.chain: (r.error and f"ERROR: {r.error[:120]}" or r.status) for r in results}
+    state["chain_status"] = {
+        r.chain: (r.error and f"ERROR: {r.error[:120]}" or r.status) for r in results
+    }
     state["on_sale"] = bool(found)
     if deep:
         state["last_deep_sweep"] = now_utc().isoformat()

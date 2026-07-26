@@ -64,7 +64,12 @@ class HoytsProvider(Provider):
         self.cfg = cfg
 
     def check(self, deep: bool = False) -> ProviderResult:
-        res = ProviderResult(chain=self.name)
+        res = ProviderResult(
+            chain=self.name,
+            venues=len(SYDNEY),
+            venue_order=list(SYDNEY.values()),
+            movie_url=SITE + "/movies/avengers-doomsday",
+        )
         needle = self.cfg.MOVIE_MATCH.lower()
 
         try:
@@ -75,11 +80,17 @@ class HoytsProvider(Provider):
 
         matches = [m for m in movies if needle in (m.get("name") or "").lower()]
         if not matches:
-            res.status = f"'{self.cfg.MOVIE_MATCH}' not listed"
+            res.status = "film not listed on the site yet"
             return res
 
+        # The site links the film's page from its own listing, so follow that
+        # rather than assuming the slug.
+        link = (matches[0].get("link") or "").strip()
+        if link.startswith("/"):
+            res.movie_url = SITE + link
+
         on_sale = [m for m in matches if m.get("onSale")]
-        res.status = "on sale flag set" if on_sale else "listed, onSale=false"
+        res.status = "ON SALE" if on_sale else "listed, tickets not released"
 
         # The cheap flag says no and we're not doing a deep sweep - stop here
         # rather than pulling 4.8 MB.
@@ -114,5 +125,5 @@ class HoytsProvider(Provider):
             )
 
         if res.sessions:
-            res.status = f"{len(res.sessions)} Sydney sessions"
+            res.status = f"ON SALE — {len(res.sessions)} sessions"
         return res
