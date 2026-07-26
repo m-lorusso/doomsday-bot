@@ -7,6 +7,11 @@ on:
     # not a to-the-second alarm.
     - cron: "*/5 * * * *"
   workflow_dispatch: # run it by hand from the Actions tab
+    inputs:
+      force_heartbeat:
+        description: "Send a Telegram message even if nothing is on sale (use this to verify delivery)"
+        type: boolean
+        default: false
 
 concurrency:
   group: doomsday-check
@@ -30,7 +35,12 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python -m bot.main
+        run: |
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "::error::TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID secrets are not set - alerts would go nowhere."
+            exit 1
+          fi
+          python -m bot.main ${{ inputs.force_heartbeat && '--force-heartbeat' || '' }}
 
       - name: Persist state
         if: always()
