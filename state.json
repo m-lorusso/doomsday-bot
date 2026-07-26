@@ -1,10 +1,10 @@
 {
   "alerted_keys": [],
   "chain_status": {
-    "Event": "selling to 2026-12-09",
-    "HOYTS": "listed, onSale=false"
+    "Event": "listed, booking open only to 9 Dec 2026",
+    "HOYTS": "listed, tickets not released"
   },
   "last_deep_sweep": "2026-07-26T02:59:15.875570+00:00",
-  "last_heartbeat": "2026-07-26T03:27:03.310202+00:00",
+  "last_heartbeat": "2026-07-26T03:49:22.239196+00:00",
   "on_sale": false
 }
