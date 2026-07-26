@@ -99,6 +99,27 @@ Kick off the first run by hand from the **Actions** tab to confirm it's green.
 Registers a Task Scheduler job every 15 minutes. It only runs while the machine
 is on, which is why Actions stays primary.
 
+## Talking to the bot
+
+Text the bot in Telegram:
+
+| Command | What it does |
+| --- | --- |
+| `/check` | Runs a full check now and reports back. Also `/status`, `/now`. |
+| `/help` | Lists the commands. |
+
+There's no always-on listener — the scheduled run reads the bot's inbox at the
+start of each cycle, so a reply lands **within 5 minutes**, not instantly.
+Requested reports arrive with a notification; the daily heartbeat is silent.
+
+Only messages from `TELEGRAM_CHAT_ID` are acted on. The bot's username is
+public and strangers can message it; without that filter they could trigger
+runs and read your watch status.
+
+`state.json` holds `telegram_offset` so a message is only ever processed once.
+That does mean a local run and the GitHub run compete for the inbox — whichever
+polls first wins. In practice only Actions is running, so it doesn't come up.
+
 ## Usage
 
 ```bash

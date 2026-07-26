@@ -135,7 +135,7 @@ def build_alert(results: list, new_keys: set) -> str:
     return "\n".join(lines).strip()
 
 
-def build_heartbeat(results: list) -> str:
+def build_heartbeat(results: list, *, requested: bool = False) -> str:
     venues = sum(r.venues for r in results)
     days = days_until(config.RELEASE_DATE)
 
@@ -144,6 +144,8 @@ def build_heartbeat(results: list) -> str:
         f"<i>{venues} Sydney cinemas checked · {au_datetime(now_sydney())}</i>",
         "",
     ]
+    if requested:
+        lines.insert(2, "<i>You asked, so here's a fresh look:</i>")
     for r in results:
         if r.error:
             lines.append(f"⚠️ <b>{html.escape(r.chain)}</b> — check failed")
@@ -185,6 +187,22 @@ def main(argv=None) -> int:
     alerted = set(state.get("alerted_keys", []))
     deep = args.deep or _cooldown_passed(state.get("last_deep_sweep", ""), config.DEEP_SWEEP_HOURS)
 
+    # Anything you've texted the bot since the last run. Cheap: one request,
+    # and it means you can ask for a status report without leaving Telegram.
+    requested = False
+    if not args.dry_run:
+        commands, next_offset = telegram.poll_commands(
+            token, chat, state.get("telegram_offset")
+        )
+        if next_offset is not None:
+            state["telegram_offset"] = next_offset
+        if commands & telegram.HELP_COMMANDS:
+            telegram.send(telegram.help_text(config.MOVIE_TITLE), token, chat)
+        if commands & telegram.CHECK_COMMANDS:
+            requested = True
+            print("  (/check requested via Telegram)")
+            deep = True  # an explicit ask deserves the thorough version
+
     print(f"Checking {', '.join(config.CHAINS)} for '{config.MOVIE_MATCH}' (deep={deep})")
     results = []
     for provider in providers.build(config):
@@ -209,13 +227,19 @@ def main(argv=None) -> int:
             print("\n(dry run - not sent, state not advanced)")
         elif telegram.send(body, token, chat):
             alerted |= new_keys
+    elif requested and found:
+        # Already on sale and already alerted, but you asked - re-send the
+        # whole picture rather than the "nothing yet" heartbeat.
+        telegram.send(build_alert(results, found), token, chat)
     else:
         print("\nNot on sale yet.")
         heartbeat_due = config.HEARTBEAT_HOURS > 0 and _cooldown_passed(
             state.get("last_heartbeat", ""), config.HEARTBEAT_HOURS
         )
-        if not args.dry_run and (args.force_heartbeat or heartbeat_due):
-            if telegram.send(build_heartbeat(results), token, chat, silent=True):
+        if not args.dry_run and (requested or args.force_heartbeat or heartbeat_due):
+            # A report you asked for should buzz; the daily one shouldn't.
+            body = build_heartbeat(results, requested=requested)
+            if telegram.send(body, token, chat, silent=not requested):
                 state["last_heartbeat"] = now_utc().isoformat()
 
     if errored and not args.dry_run and _cooldown_passed(state.get("last_error_alert", ""), 12):
