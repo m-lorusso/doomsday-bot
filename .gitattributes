@@ -1,0 +1,7 @@
+# The workflow's shell script runs on a Linux runner - keep LF in the repo
+# regardless of what Windows checks out locally.
+* text=auto
+*.py text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.ps1 text eol=crlf
