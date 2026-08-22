@@ -1,11 +1,11 @@
 {
   "alerted_keys": [],
   "chain_status": {
-    "Event": "listed, booking open only to 9 Dec 2026",
+    "Event": "ERROR: IMAX Sydney: https://www.eventcinemas.com.au/Cinemas/GetSessions?cinemaIds=96&date=2026-12-17: HTTP Error 403: Forbidden",
     "HOYTS": "listed, tickets not released"
   },
   "last_deep_sweep": "2026-08-22T19:12:07.087588+00:00",
-  "last_error_alert": "2026-08-22T08:01:04.864942+00:00",
+  "last_error_alert": "2026-08-22T23:19:11.267429+00:00",
   "last_heartbeat": "2026-08-22T19:53:31.863193+00:00",
   "on_sale": false,
   "telegram_offset": 134067330
