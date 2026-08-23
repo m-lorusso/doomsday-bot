@@ -75,8 +75,12 @@ class HoytsProvider(Provider):
         try:
             movies = http.fetch_json(BASE + "movies", headers={"Referer": SITE + "/"})
         except http.FetchError as exc:
-            res.error = f"movies: {exc}"
+            res.error = res.last_error = f"movies: {exc}"
             return res
+
+        # One request covers the whole chain, so getting this far means every
+        # Sydney venue is accounted for - including on the early returns below.
+        res.checked = len(SYDNEY)
 
         matches = [m for m in movies if needle in (m.get("name") or "").lower()]
         if not matches:
@@ -100,7 +104,8 @@ class HoytsProvider(Provider):
         try:
             sessions = http.fetch_json(BASE + "sessions", headers={"Referer": SITE + "/"})
         except http.FetchError as exc:
-            res.error = f"sessions: {exc}"
+            # The cheap flag already answered, so this isn't a blind run.
+            res.last_error = f"sessions: {exc}"
             return res
 
         # vistaId can be "HO00008129,HO00011223" - one film, several Vista codes.

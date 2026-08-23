@@ -56,6 +56,25 @@ big dump is pulled only when that flag flips — plus one forced sweep every
 `DEEP_SWEEP_HOURS` in case the flag lags reality. Note a film's `vistaId` can be
 comma-separated (`HO00008129,HO00011223`); sessions match on either.
 
+### Cloudflare and the 403s
+
+Event sits behind Cloudflare, which intermittently 403s a cold request coming
+from a datacentre IP — i.e. every GitHub Actions runner. It showed up as
+`IMAX Sydney: HTTP Error 403: Forbidden` roughly one run in seven, and always
+IMAX Sydney, purely because it's first in the venue list and so wore the
+challenge for everyone else.
+
+Two things fix it: [`bot/http.py`](bot/http.py) keeps a shared cookie jar so the
+`__cf_bm` clearance cookie is reused across a run, and each provider warms up
+against the site root first so that challenge lands somewhere harmless. A 403
+also backs off 4s/12s/30s rather than the generic 1s/2s, because a Cloudflare
+hold outlasts an immediate retry.
+
+Partial failures no longer raise an alert. One venue out of sixteen glitching
+is noise; it's reported in the daily update as `15/16 venues` naming the one
+that didn't answer. The error alert now fires only when a chain returns
+*nothing at all*, which is what an actual outage or a real block looks like.
+
 ## Setup
 
 ### 1. Telegram

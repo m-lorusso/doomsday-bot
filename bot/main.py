@@ -139,11 +139,16 @@ def build_alert(results: list, new_keys: set) -> str:
 
 def build_heartbeat(results: list, *, requested: bool = False) -> str:
     venues = sum(r.venues for r in results)
+    checked = sum(r.checked for r in results)
     days = days_until(config.RELEASE_DATE)
+
+    # Say what actually answered. Claiming 28 when a venue timed out is the
+    # kind of small lie that makes you distrust the whole message later.
+    coverage = f"{checked} of {venues}" if checked < venues else str(venues)
 
     lines = [
         f"\U0001f3ac <b>{html.escape(config.MOVIE_TITLE)}</b> — not on sale yet",
-        f"<i>{venues} Sydney cinemas checked · {au_datetime(now_sydney())}</i>",
+        f"<i>{coverage} Sydney cinemas checked · {au_datetime(now_sydney())}</i>",
         "",
     ]
     if requested:
@@ -153,8 +158,17 @@ def build_heartbeat(results: list, *, requested: bool = False) -> str:
             lines.append(f"⚠️ <b>{html.escape(r.chain)}</b> — check failed")
             lines.append(f"  <i>{html.escape(r.error[:110])}</i>")
         else:
-            lines.append(f"✅ <b>{_link(r.chain, r.movie_url)}</b> · {r.venues} venues")
+            covered = f"{r.checked}/{r.venues}" if r.checked < r.venues else str(r.venues)
+            mark = "✅" if r.checked == r.venues else "🟡"
+            lines.append(f"{mark} <b>{_link(r.chain, r.movie_url)}</b> · {covered} venues")
             lines.append(f"  {html.escape(r.status or 'no signal')}")
+            if r.failed_venues:
+                missed = ", ".join(r.failed_venues[:3])
+                more = f" +{len(r.failed_venues) - 3}" if len(r.failed_venues) > 3 else ""
+                lines.append(
+                    f"  <i>no answer from {html.escape(missed)}{more}"
+                    " — retried next run</i>"
+                )
     lines.append("")
 
     tail = f" — {days} days away" if days else ""
@@ -246,10 +260,14 @@ def main(argv=None) -> int:
 
     if errored and not args.dry_run and _cooldown_passed(state.get("last_error_alert", ""), 12):
         names = ", ".join(r.chain for r in errored)
+        detail = next((r.last_error for r in errored if r.last_error), "")
         if telegram.send(
-            f"⚠️ <b>{html.escape(config.MOVIE_TITLE)} watch</b> — "
-            f"{html.escape(names)} failed to check. "
-            "A site may have changed or started blocking the request.",
+            f"⚠️ <b>{html.escape(config.MOVIE_TITLE)} watch</b>"
+            f" — no venues reachable at {html.escape(names)}, so this run"
+            f" checked nothing there.\n"
+            f"<i>{html.escape(detail[:160])}</i>\n\n"
+            "Still retrying every 5 minutes. If this keeps up, the site has "
+            "changed or is blocking us.",
             token, chat,
         ):
             state["last_error_alert"] = now_utc().isoformat()

@@ -96,13 +96,20 @@ class EventProvider(Provider):
         res = ProviderResult(
             chain=self.name, venues=len(SYDNEY), venue_order=list(SYDNEY), movie_url=MOVIE_PAGE
         )
-        horizons, failures = [], []
+        horizons = []
+
+        # Collect Cloudflare's cookies against the site root first. Without
+        # this the first venue wears the challenge and 403s on its own, which
+        # is why IMAX Sydney - simply for being first in the list - was the
+        # only venue that ever failed.
+        http.warm_up("https://www.eventcinemas.com.au/")
 
         for cinema, cid in SYDNEY.items():
             try:
                 data = self._get(cid, self.cfg.RELEASE_DATE)
             except http.FetchError as exc:
-                failures.append(f"{cinema}: {exc}")
+                res.failed_venues.append(cinema)
+                res.last_error = f"{cinema}: {exc}"
                 continue
 
             dates = data.get("Dates") or []
@@ -119,7 +126,9 @@ class EventProvider(Provider):
                 try:
                     res.sessions.extend(self._harvest(self._get(cid, date), cinema))
                 except http.FetchError as exc:
-                    failures.append(f"{cinema} {date}: {exc}")
+                    # A missed follow-up date isn't a missed venue: the venue
+                    # itself answered, so don't mark it down for this.
+                    res.last_error = f"{cinema} {date}: {exc}"
 
             time.sleep(self.cfg.REQUEST_DELAY_SECONDS)
 
@@ -127,6 +136,10 @@ class EventProvider(Provider):
             res.status = f"ON SALE — {len(res.sessions)} sessions"
         elif horizons:
             res.status = f"listed, booking open only to {au_date(max(horizons))}"
-        if failures:
-            res.error = "; ".join(failures[:3])
+        res.checked = len(SYDNEY) - len(res.failed_venues)
+        # Only a wholesale failure is an error worth shouting about. One venue
+        # out of sixteen glitching is noise, and treating it as an outage
+        # trains you to ignore the alert that matters.
+        if not res.checked:
+            res.error = res.last_error or "every venue failed"
         return res

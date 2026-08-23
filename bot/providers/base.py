@@ -35,7 +35,10 @@ class ProviderResult:
     venues: int = 0
     venue_order: list = field(default_factory=list)  # best venues first; drives alert ordering
     movie_url: str | None = None  # the chain's page for the film, for tapping through
-    error: str | None = None
+    checked: int = 0  # venues that answered this run
+    failed_venues: list = field(default_factory=list)
+    last_error: str | None = None  # most recent failure, even a survivable one
+    error: str | None = None  # set only when the chain gave us nothing at all
 
 
 class Provider:
