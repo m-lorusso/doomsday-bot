@@ -4,9 +4,9 @@
     "Event": "listed, booking open only to 9 Dec 2026",
     "HOYTS": "listed, tickets not released"
   },
-  "last_deep_sweep": "2026-08-27T03:18:03.950381+00:00",
+  "last_deep_sweep": "2026-08-27T14:21:04.814332+00:00",
   "last_error_alert": "2026-08-22T23:19:11.267429+00:00",
-  "last_heartbeat": "2026-08-26T06:19:13.739583+00:00",
+  "last_heartbeat": "2026-08-27T14:21:04.814304+00:00",
   "on_sale": false,
   "telegram_offset": 134067330
 }
