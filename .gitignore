@@ -3,3 +3,8 @@ __pycache__/
 .env
 .venv/
 venv/
+
+# The PC watcher keeps its own state and log (watch_imax.ps1).
+local_state.json
+local_watch.log
+local_watch.log.old

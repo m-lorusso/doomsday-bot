@@ -2,16 +2,21 @@ name: Doomsday ticket watch
 
 on:
   schedule:
-    # Every 5 minutes - the shortest interval GitHub accepts. Scheduled runs are
-    # queued, so expect a few minutes of drift under load; this is a fast watch,
-    # not a to-the-second alarm.
+    # Asks for every 5 minutes. In practice GitHub treats scheduled workflows as
+    # low priority and has been running this roughly every 3-4 hours. It's the
+    # backup and the daily report; the per-minute IMAX watch runs elsewhere
+    # (see watch_imax.ps1).
     - cron: "*/5 * * * *"
   workflow_dispatch: # run it by hand from the Actions tab
     inputs:
       force_heartbeat:
-        description: "Send a Telegram message even if nothing is on sale (use this to verify delivery)"
+        description: "Send the status report even if nothing changed (verifies delivery)"
         type: boolean
         default: false
+      imax_watch_minutes:
+        description: "After the check, keep watching IMAX every minute for this many minutes (0-25)"
+        type: string
+        default: "0"
 
 concurrency:
   group: doomsday-check
@@ -23,7 +28,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -31,16 +36,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check every chain
+      - name: Check every chain (IMAX first)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          WATCH_MINUTES: ${{ inputs.imax_watch_minutes || '0' }}
         run: |
           if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
             echo "::error::TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID secrets are not set - alerts would go nowhere."
             exit 1
           fi
-          python -m bot.main ${{ inputs.force_heartbeat && '--force-heartbeat' || '' }}
+          mins="$WATCH_MINUTES"
+          case "$mins" in ''|*[!0-9]*) mins=0 ;; esac
+          if (( mins > 25 )); then mins=25; fi
+          python -m bot.main ${{ inputs.force_heartbeat && '--force-heartbeat' || '' }} --imax-watch $(( mins * 60 ))
 
       - name: Persist state
         if: always()
@@ -50,7 +59,8 @@ jobs:
             git config user.email "doomsday-bot@users.noreply.github.com"
             git add state.json
             git commit -m "state: $(date -u +%Y-%m-%dT%H:%MZ)"
-            # Another run may have landed while this one was working.
-            git pull --rebase --autostash || true
+            # If someone pushed meanwhile, keep this run's state (it's newest).
+            # In a rebase, "theirs" is the commit being replayed - ours.
+            git pull --rebase -X theirs || git rebase --abort
             git push
           fi

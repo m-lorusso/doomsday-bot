@@ -88,7 +88,15 @@ def warm_up(url: str) -> bool:
 
 
 def fetch_json(url: str, **kw):
-    return json.loads(fetch(url, **kw).decode("utf-8"))
+    raw = fetch(url, **kw)
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        # Cloudflare's challenge page arrives as HTML with a 200. Surface that
+        # as an ordinary fetch failure so callers' error handling covers it,
+        # rather than an exception that escapes and sinks the whole chain.
+        head = " ".join(raw[:80].decode("utf-8", "replace").split())
+        raise FetchError(f"{url}: expected JSON, got {head!r}") from exc
 
 
 def fetch_text(url: str, **kw) -> str:

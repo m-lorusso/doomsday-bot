@@ -1,211 +1,173 @@
 # Doomsday Bot
 
-Watches Sydney cinemas and pings you on Telegram the moment **Avengers:
-Doomsday** (AU release 17 Dec 2026) becomes bookable — with session times,
-screen type, seats left, and a direct booking link.
+Watches Sydney cinemas for **Avengers: Doomsday** (AU release 17 Dec 2026,
+previews from 16 Dec) and messages you on Telegram — with **IMAX treated as the
+thing that matters**.
 
-Runs free on GitHub Actions every 5 minutes. Python standard library only —
-no dependencies, no browser automation, nothing to `pip install`.
+- **IMAX on sale** → a loud alert, **pinned to the top of the chat**, followed
+  by a second short message so your phone buzzes twice. Every session time is a
+  tap-through to seat selection, with a big **BOOK … NOW** link per screen.
+- **General on sale** → one loud alert the first time. After that, newly added
+  (non-IMAX) sessions arrive as quiet updates, so they never dilute the IMAX
+  alert.
+- **Daily status** → silent, and it always says where IMAX stands.
 
-## Coverage
+Python standard library only — nothing to `pip install`.
 
-| Chain | Sydney venues | Signal | Detail in the alert |
+## Where things stand (25 Sep 2026)
+
+Doomsday went on sale on 24 Sep — between 3:29 AM and 6:39 AM Sydney time at
+Event, a little later at HOYTS. **Neither IMAX screen is selling it yet.**
+Neither has released any December programming for any film: IMAX Sydney's
+calendar ends 1 Nov and Blacktown's IMAX screen is booked only to 14 Oct.
+*Dune: Part Three* also opens 16 Dec and isn't on sale yet either, so the IMAX
+screens for release week are still undecided.
+
+## The two IMAX screens
+
+| Screen | Chain | How it's checked |
+| --- | --- | --- |
+| **IMAX Sydney**, Darling Harbour | Event | `GetSessions?cinemaIds=96` — the venue is IMAX-only |
+| **Blacktown IMAX** | HOYTS | `sessions/WESCIN` — only sessions whose `typeId`/`screenName` is IMAX |
+
+IMAX is decided per session, never from a venue's name. Blacktown has an IMAX
+screen, but most of its Doomsday sessions are Standard, Xtremescreen or ScreenX.
+An earlier version labelled the whole venue "Blacktown (IMAX)" and starred
+those sessions as if they were IMAX. That's fixed, and there's a test for it.
+
+HOYTS matches the film by *name*, not a fixed code, so an IMAX version arriving
+under a new Vista film code is still caught.
+
+## How often it checks — honestly
+
+| Runner | IMAX | Everything else | Needs |
 | --- | --- | --- | --- |
-| **Event** | 16, incl. **IMAX Sydney** | per-venue session API | times, screen, seats left, booking link |
-| **HOYTS** | 12, incl. **IMAX Blacktown** | `onSale` flag + full session dump | times, screen, booking link |
+| **This PC** (`watch_imax.ps1`) | **every minute** | on `/check` | PC on and logged in |
+| **GitHub Actions** | each run | each run | nothing — but see below |
 
-Both Sydney IMAX screens are covered, and IMAX sessions are individually
-identifiable — Event reports `ScreenTypeName: IMAX`, HOYTS reports
-`typeId: IMAX` on screen `IMAX 01`.
+The workflow asks GitHub for every 5 minutes. **GitHub has actually been
+running it about every 3–4 hours** (median gap 215 min across 100 runs, all
+successful). Scheduled workflows are low priority and most triggers are
+dropped. That's why the on-sale alert on the 24th landed at 6:39 AM rather than
+the moment tickets opened. So:
 
-**Event** — IMAX Sydney, George Street, Bondi Junction, Parramatta, Castle Hill,
-Macquarie, Top Ryde City, Miranda, Hurstville, Burwood, Hornsby, Liverpool,
-Campbelltown, Ed Square, Drive In Blacktown, Moonlight Sydney.
+- **The PC watcher is the fast path for IMAX.** Install it once:
+  ```powershell
+  .\install_local_schedule.ps1
+  ```
+  Task Scheduler keeps exactly one watcher alive and restarts it within 5
+  minutes if it stops. It checks both IMAX screens every minute, answers
+  `/check` and `/imax` within a minute, and logs to `local_watch.log`. It uses
+  its own `local_state.json`, seeded from `state.json`, so it never fights
+  GitHub's copy.
+- **GitHub Actions is the backup** for when the PC is off, and sends the daily
+  status.
 
-**HOYTS** — Blacktown (IMAX), Broadway, Entertainment Quarter, Chatswood
-Westfield, Chatswood Mandarin, Eastgardens, Warringah Mall, Bankstown, Cronulla,
-Mt Druitt, Penrith, Wetherill Park.
+## Commands
 
-### Not covered
-
-Ritz Randwick and Palace (Central, Norton St, Moore Park) were dropped by
-choice — small venues that won't be first to open a Marvel tentpole, and
-neither could report actual session times, only a "it's bookable" flag.
-
-Reading (Rouse Hill, Auburn), Dendy Newtown, Hayden Orpheum, United and
-Roseville aren't reachable: Reading's backend sits behind an authenticated
-gateway, and the others render entirely client-side, so there's no data to read
-over plain HTTP. Covering them would mean running a headless browser on every
-check — a large jump in fragility and runtime.
-
-## How each signal works
-
-**Event** — the session picker calls
-`GET /Cinemas/GetSessions?cinemaIds=<id>&date=YYYY-MM-DD`. It returns `Movies`
-(with `CinemaModels[].Sessions[]`, each carrying `StartTime`, `ScreenTypeName`,
-`SeatsAvailable` and a `BookingUrl`) plus `Dates` — the venue's *entire* on-sale
-calendar. Each run probes `RELEASE_DATE`, then re-probes any on-sale date at or
-after `WATCH_FROM`, which is what saves you if the release shifts a day or
-previews open on the 16th. Repeat the param for multiple venues
-(`cinemaIds=15&cinemaIds=64`); a comma-separated list returns a 500.
-
-**HOYTS** — an open, unauthenticated API. `/api/movies` (~195 KB) carries an
-`onSale` boolean per film; `/api/sessions` (~4.8 MB) is every session in the
-country and ignores query filters. So the cheap flag drives every run, and the
-big dump is pulled only when that flag flips — plus one forced sweep every
-`DEEP_SWEEP_HOURS` in case the flag lags reality. Note a film's `vistaId` can be
-comma-separated (`HO00008129,HO00011223`); sessions match on either.
-
-### Cloudflare and the 403s
-
-Event sits behind Cloudflare, which intermittently 403s a cold request coming
-from a datacentre IP — i.e. every GitHub Actions runner. It showed up as
-`IMAX Sydney: HTTP Error 403: Forbidden` roughly one run in seven, and always
-IMAX Sydney, purely because it's first in the venue list and so wore the
-challenge for everyone else.
-
-Two things fix it: [`bot/http.py`](bot/http.py) keeps a shared cookie jar so the
-`__cf_bm` clearance cookie is reused across a run, and each provider warms up
-against the site root first so that challenge lands somewhere harmless. A 403
-also backs off 4s/12s/30s rather than the generic 1s/2s, because a Cloudflare
-hold outlasts an immediate retry.
-
-Partial failures no longer raise an alert. One venue out of sixteen glitching
-is noise; it's reported in the daily update as `15/16 venues` naming the one
-that didn't answer. The error alert now fires only when a chain returns
-*nothing at all*, which is what an actual outage or a real block looks like.
-
-## Setup
-
-### 1. Telegram
-
-1. Message [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token.
-2. Send your new bot any message (it can't message you until you've talked to it).
-3. Get your chat ID from
-   `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` → `result[0].message.chat.id`.
-
-Copy `.env.example` to `.env`, fill both in, then:
-
-```bash
-powershell -File run_once.ps1 --test-alert
-```
-
-### 2. GitHub
-
-```bash
-git remote add origin https://github.com/<you>/doomsday-bot.git
-```
-
-```bash
-git add -A && git commit -m "Sydney-wide Doomsday ticket watcher" && git push -u origin main
-```
-
-Then **Settings → Secrets and variables → Actions → New repository secret**, for
-`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
-
-Make the repo **public** — Actions minutes are unlimited for public repos, and a
-5-minute schedule is roughly 8,600 runs/month against a 2,000-minute private
-free tier. Nothing sensitive is in the code; credentials live in Secrets.
-
-Kick off the first run by hand from the **Actions** tab to confirm it's green.
-
-### 3. Optional: a second pair of eyes from this PC
-
-```powershell
-.\install_local_schedule.ps1
-```
-
-Registers a Task Scheduler job every 15 minutes. It only runs while the machine
-is on, which is why Actions stays primary.
-
-## Talking to the bot
-
-Text the bot in Telegram:
+Text the bot:
 
 | Command | What it does |
 | --- | --- |
-| `/check` | Runs a full check now and reports back. Also `/status`, `/now`. |
-| `/help` | Lists the commands. |
+| `/imax` | Where both IMAX screens stand right now |
+| `/check` | Checks every cinema and reports back (also `/status`, `/now`) |
+| `/help` | Lists the commands |
 
-There's no always-on listener — the scheduled run reads the bot's inbox at the
-start of each cycle, so a reply lands **within 5 minutes**, not instantly.
-Requested reports arrive with a notification; the daily heartbeat is silent.
+Only messages from `TELEGRAM_CHAT_ID` are acted on; the bot's username is
+public. Replies arrive within a minute while the PC watcher runs, otherwise at
+GitHub's next run.
 
-Only messages from `TELEGRAM_CHAT_ID` are acted on. The bot's username is
-public and strangers can message it; without that filter they could trigger
-runs and read your watch status.
+## Coverage
 
-`state.json` holds `telegram_offset` so a message is only ever processed once.
-That does mean a local run and the GitHub run compete for the inbox — whichever
-polls first wins. In practice only Actions is running, so it doesn't come up.
+**Event (16)** — IMAX Sydney, George Street, Bondi Junction, Parramatta, Castle
+Hill, Macquarie, Top Ryde City, Miranda, Hurstville, Burwood, Hornsby,
+Liverpool, Campbelltown, Ed Square, Drive In Blacktown, Moonlight Sydney.
 
-## Usage
+**HOYTS (12)** — Blacktown, Broadway, Entertainment Quarter, Chatswood
+Westfield, Chatswood Mandarin, Eastgardens, Warringah Mall, Bankstown, Cronulla,
+Mt Druitt, Penrith, Wetherill Park.
+
+Not covered: Ritz and Palace (dropped by choice); Reading, Dendy, Orpheum,
+United and Roseville (auth-gated or client-rendered — they'd need a headless
+browser).
+
+## How each chain is read
+
+**Event** — `GET /Cinemas/GetSessions?cinemaIds=<id>&cinemaIds=<id>...&date=YYYY-MM-DD`.
+Repeat `cinemaIds` to ask about several venues at once (a comma-separated list
+returns a 500). One request for all 16 venues returns exactly the sessions 16
+separate requests would (verified: 215 = 215), in 0.1s instead of 2.6s. `Movies`
+only lists films with sessions *on that date*, so the bot probes the release
+date, then other on-sale dates from `WATCH_FROM`, **nearest the release first**.
+(An earlier version took the *earliest* dates from 1 Nov, and as the calendar
+filled up it stopped reaching December — it was missing ~900 Event sessions.)
+
+Event sits behind Cloudflare, which 403s cold requests from datacentre IPs. A
+shared cookie jar plus a warm-up request against the site root carries the
+`__cf_bm` clearance cookie. A 403 backs off 4s/12s/30s, and a run gives up on
+follow-up dates after two consecutive failures rather than spend minutes in
+backoff.
+
+**HOYTS** — open JSON API. `/api/movies` maps Vista film codes to names;
+`/api/sessions/<venue>` (~150 KB) is one venue's sessions for every date. Twelve
+of those replace the 4.8 MB national `/api/sessions` dump. Reading sessions
+directly also means no reliance on the `onSale` flag — on the 24th it lagged the
+real listings by hours.
+
+A full check of all 28 venues takes about 10 seconds.
+
+## Setup
+
+1. **Telegram**: [@BotFather](https://t.me/BotFather) → `/newbot` → token.
+   Message the bot once, then get your chat id from
+   `https://api.telegram.org/bot<TOKEN>/getUpdates`. Put both in `.env` (see
+   `.env.example`).
+2. **GitHub**: push the repo (public, so Actions minutes are free), then add
+   `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` under Settings → Secrets and
+   variables → Actions.
+3. **This PC**: `.\install_local_schedule.ps1`.
+
+## Testing
 
 ```bash
-python -m bot.main               # normal check
-python -m bot.main --dry-run     # scan and print; never send, never save
-python -m bot.main --deep        # force the expensive checks this run
-python -m bot.main --test-alert  # prove Telegram delivery works
+python -m unittest discover -s tests -v   # offline: IMAX detection, pinning, alerts, DST...
+python -m bot.main --dry-run              # live check; prints instead of sending, saves nothing
+python -m bot.main --test-imax            # sends a sample IMAX alert, clearly marked TEST
+python -m bot.main --test-alert           # proves Telegram delivery
 ```
 
-Point it at a film that's already on sale to see a real alert render:
+To see the real IMAX alert render against live data, point it at a film that's
+in IMAX now. At the time of writing that's *Avengers: Endgame Encore*, on both
+screens:
 
 ```bash
-MOVIE_MATCH=odyssey RELEASE_DATE=2026-07-27 python -m bot.main --dry-run --deep
+STATE_FILE=/tmp/s.json MOVIE_MATCH=endgame MOVIE_TITLE="Avengers: Endgame Encore" \
+  RELEASE_DATE=2026-09-26 WATCH_FROM=2026-09-25 python -m bot.main --dry-run
 ```
 
 ## Configuration
 
-Everything in [`bot/config.py`](bot/config.py) is overridable by an environment
-variable of the same name.
+Everything in [`bot/config.py`](bot/config.py) can be overridden by an
+environment variable of the same name. The ones you might touch:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `MOVIE_MATCH` | `doomsday` | Case-insensitive substring of the film title |
-| `RELEASE_DATE` | `2026-12-17` | Date probed first each run (Event) |
-| `WATCH_FROM` | `2026-11-01` | Re-probe any Event on-sale date at/after this |
-| `CHAINS` | `event,hoyts` | Which providers run, and alert order |
-| `DEEP_SWEEP_HOURS` | `6` | How often to force the expensive checks |
-| `HEARTBEAT_HOURS` | `24` | "Still nothing" ping cadence; `0` disables |
-| `MAX_SESSIONS_LISTED` | `6` | Sessions per cinema before "…and N more" |
+| `IMAX_POLL_SECONDS` | `60` | IMAX check interval in the watch loop |
+| `FULL_CHECK_MINUTES` | `15` | Full check interval in the loop (not in `--imax-only`) |
+| `WATCH_FROM` | `2026-12-14` | Event dates from here on get probed |
+| `RELEASE_DATE` | `2026-12-17` | Probed first every time |
+| `HEARTBEAT_HOURS` | `24` | Daily status cadence; `0` disables (the PC watcher sets 0) |
+| `IMAX_SESSIONS_LISTED` | `12` | Sessions per screen in the IMAX alert |
+| `MAX_SESSIONS_LISTED` / `MAX_CINEMAS_LISTED` | `6` / `8` | Caps for the general alert |
 
-Venue lists live next to each provider — `SYDNEY` in
-[`bot/providers/event.py`](bot/providers/event.py) and
-[`bot/providers/hoyts.py`](bot/providers/hoyts.py). Both also carry a `REGIONAL`
-dict (Tuggerah, Shellharbour, Newcastle, Erina, Wollongong) if you'd travel.
+Venue lists live in [`bot/providers/event.py`](bot/providers/event.py) and
+[`bot/providers/hoyts.py`](bot/providers/hoyts.py); each also has a `REGIONAL`
+list if you'd travel.
 
-Adding a chain is one file implementing `check(deep)` in
-[`bot/providers/base.py`](bot/providers/base.py) terms, plus a line in
-[`bot/providers/__init__.py`](bot/providers/__init__.py).
+## State
 
-## State and noise control
-
-`state.json` records which session keys you've already been told about, so you
-get alerted once per newly-listed session rather than every 5 minutes forever.
-The Actions job commits it back. It deliberately holds no run timestamp — that
-would mean a commit every 5 minutes.
-
-You also get a quiet daily heartbeat listing each chain's status, and an error
-alert (at most every 12 hours) if a chain starts failing — which is what a site
-change or an IP block would look like.
-
-## Being genuinely early
-
-The bot tells you within ~5 minutes of tickets appearing. To convert that:
-
-- Have an **Event Cinebuzz** and a **HOYTS Rewards** account already created and
-  logged in on your phone *and* desktop before December. Making an account at
-  checkout is where the seat goes.
-- Both chains run member presales ahead of general on-sale. This bot watches the
-  *public* session lists, so a members-only presale that isn't publicly listed
-  won't be seen — get on both mailing lists too.
-- The two IMAX screens (Event Darling Harbour, HOYTS Blacktown) sell out first.
-  They're first in the alert order for that reason.
-
-## Known quirks
-
-- **Event Bondi Junction** currently returns zero sessions on every date. It's
-  left in the list and costs nothing; it'll report if the venue comes back.
-- **Moonlight Cinema Sydney** is seasonal and returns no dates outside summer.
-- These are unofficial endpoints. If a chain changes theirs, the error alert is
-  your warning.
+`state.json` (GitHub's) and `local_state.json` (the PC's) record which sessions
+you've already been told about, whether the big on-sale announcement has gone
+out, the latest status of each chain and IMAX screen, and the Telegram inbox
+offset. GitHub commits its copy back after each run. There's no run timestamp
+in it on purpose — that would mean a commit every run.

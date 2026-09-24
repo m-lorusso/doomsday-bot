@@ -13,6 +13,7 @@ LIMIT = 3900  # Telegram caps a message at 4096 chars; leave headroom.
 # Commands we understand, lowercase, without the @botname suffix Telegram adds
 # in group chats.
 CHECK_COMMANDS = {"/check", "/status", "/now"}
+IMAX_COMMANDS = {"/imax"}
 HELP_COMMANDS = {"/help", "/start"}
 
 
@@ -37,29 +38,50 @@ def _chunks(text: str):
         yield text
 
 
-def send(text: str, token: str, chat_id: str, *, silent: bool = False) -> bool:
-    """Send `text` as HTML. Returns False if it couldn't be delivered."""
+def send(text: str, token: str, chat_id: str, *, silent: bool = False) -> list:
+    """Send `text` as HTML.
+
+    Returns the ids of the messages sent, or an empty list if any part failed
+    to deliver - so `if send(...)` still reads as "did it arrive".
+    """
     if not token or not chat_id:
         print("[telegram not configured - message below]\n" + text)
-        return False
+        return []
 
-    ok = True
+    ids, ok = [], True
     for part in _chunks(text):
         try:
-            _api(token, "sendMessage", {
+            reply = _api(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": part,
                 "parse_mode": "HTML",
                 "disable_web_page_preview": True,
                 "disable_notification": silent,
             })
+            ids.append((reply.get("result") or {}).get("message_id"))
         except urllib.error.HTTPError as exc:
             print(f"telegram error {exc.code}: {exc.read().decode('utf-8', 'replace')}")
             ok = False
         except Exception as exc:  # noqa: BLE001
             print(f"telegram error: {exc}")
             ok = False
-    return ok
+    return ids if ok else []
+
+
+def pin(token: str, chat_id: str, message_id) -> bool:
+    """Pin a message to the top of the chat. Bots may pin in private chats."""
+    if not token or not chat_id or message_id is None:
+        return False
+    try:
+        _api(token, "pinChatMessage", {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "disable_notification": False,
+        })
+        return True
+    except Exception as exc:  # noqa: BLE001 - a failed pin must not lose the alert
+        print(f"telegram pin failed: {exc}")
+        return False
 
 
 def poll_commands(token: str, chat_id: str, offset: int | None) -> tuple:
@@ -102,8 +124,9 @@ def poll_commands(token: str, chat_id: str, offset: int | None) -> tuple:
 def help_text(title: str) -> str:
     return (
         f"\U0001f916 <b>{title} watch</b>\n\n"
-        "<b>/check</b> — run a check now and report back\n"
+        "<b>/imax</b> — where IMAX stands right now\n"
+        "<b>/check</b> — check every cinema now and report back\n"
         "<b>/help</b> — this message\n\n"
-        "<i>Otherwise I stay quiet: I check every 5 minutes on my own and only "
-        "message you the moment tickets go on sale, plus one status update a day.</i>"
+        "<i>Otherwise I stay quiet. The moment IMAX opens you get a loud alert, "
+        "pinned to the top of this chat. Everything else is one quiet update a day.</i>"
     )
