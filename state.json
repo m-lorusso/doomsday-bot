@@ -2616,6 +2616,7 @@
     "hoyts:462841",
     "hoyts:462844",
     "hoyts:462845",
+    "hoyts:462846",
     "hoyts:462848",
     "hoyts:462854",
     "hoyts:462856",
@@ -2952,7 +2953,7 @@
   "announced_on_sale": true,
   "chain_status": {
     "Event": "on sale \u2014 1590 sessions",
-    "HOYTS": "on sale \u2014 1229 sessions"
+    "HOYTS": "on sale \u2014 1230 sessions"
   },
   "imax_failing_since": {},
   "imax_status": {
