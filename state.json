@@ -1750,6 +1750,7 @@
     "event:15673545",
     "event:15673546",
     "event:15676525",
+    "event:15676579",
     "hoyts:308808",
     "hoyts:308810",
     "hoyts:308812",
@@ -3009,7 +3010,7 @@
     "IMAX Sydney": "no Doomsday sessions yet \u00b7 booking open to 6 Jan 2027"
   },
   "last_error_alert": "2026-08-22T23:19:11.267429+00:00",
-  "last_heartbeat": "2026-10-04T06:19:51.141444+00:00",
+  "last_heartbeat": "2026-10-05T07:45:20.516983+00:00",
   "on_sale": true,
   "telegram_offset": 134067330
 }
