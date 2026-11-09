@@ -2926,6 +2926,7 @@
     "hoyts:456592",
     "hoyts:456593",
     "hoyts:456599",
+    "hoyts:456614",
     "hoyts:456616",
     "hoyts:456617",
     "hoyts:456620",
@@ -2942,6 +2943,7 @@
     "hoyts:456642",
     "hoyts:456643",
     "hoyts:456644",
+    "hoyts:456646",
     "hoyts:456649",
     "hoyts:456650",
     "hoyts:456651",
@@ -3010,6 +3012,7 @@
     "hoyts:456827",
     "hoyts:456830",
     "hoyts:456834",
+    "hoyts:456836",
     "hoyts:456838",
     "hoyts:456842",
     "hoyts:456844",
@@ -3059,6 +3062,9 @@
     "hoyts:456941",
     "hoyts:456942",
     "hoyts:456943",
+    "hoyts:460153",
+    "hoyts:460154",
+    "hoyts:460155",
     "hoyts:462824",
     "hoyts:462825",
     "hoyts:462826",
@@ -3442,7 +3448,7 @@
   "announced_on_sale": true,
   "chain_status": {
     "Event": "on sale \u2014 2004 sessions",
-    "HOYTS": "on sale \u2014 1289 sessions"
+    "HOYTS": "on sale \u2014 1295 sessions"
   },
   "imax_failing_since": {},
   "imax_status": {
