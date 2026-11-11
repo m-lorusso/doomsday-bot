@@ -3449,12 +3449,12 @@
   "announced_on_sale": true,
   "chain_status": {
     "Event": "on sale \u2014 1999 sessions",
-    "HOYTS": "on sale \u2014 1294 sessions"
+    "HOYTS": "on sale \u2014 1195 sessions"
   },
   "imax_failing_since": {},
   "imax_status": {
     "Blacktown IMAX": "no Doomsday sessions yet \u00b7 IMAX screen booked to 30 Dec 2026",
-    "IMAX Sydney": "no Doomsday sessions yet \u00b7 booking open to 6 Jan 2027"
+    "IMAX Sydney": "no Doomsday sessions yet \u00b7 booking open to 20 Jan 2027"
   },
   "last_error_alert": "2026-08-22T23:19:11.267429+00:00",
   "last_heartbeat": "2026-11-10T11:41:56.216205+00:00",
