@@ -1712,6 +1712,7 @@
     "event:15661275",
     "event:15661284",
     "event:15661293",
+    "event:15661346",
     "event:15662498",
     "event:15662502",
     "event:15662504",
@@ -2158,6 +2159,11 @@
     "event:15762360",
     "event:15762417",
     "event:15762424",
+    "event:15762552",
+    "event:15762565",
+    "event:15762599",
+    "event:15762609",
+    "event:15762652",
     "hoyts:308808",
     "hoyts:308810",
     "hoyts:308812",
@@ -3483,14 +3489,12 @@
   ],
   "announced_on_sale": true,
   "chain_status": {
-    "Event": "on sale \u2014 2016 sessions",
-    "HOYTS": "on sale \u2014 1213 sessions"
+    "Event": "on sale \u2014 2014 sessions",
+    "HOYTS": "on sale \u2014 1297 sessions"
   },
-  "imax_failing_since": {
-    "HOYTS": "2026-11-12T22:23:33.913654+00:00"
-  },
+  "imax_failing_since": {},
   "imax_status": {
-    "Blacktown IMAX": "ERROR: Blacktown: https://apim-aea.hoyts.com.au/cinemaapi-au-live/api/sessions/WESCIN: expected JSON, got '[{\"id\":386246,\"cinem",
+    "Blacktown IMAX": "no Doomsday sessions yet \u00b7 IMAX screen booked to 30 Dec 2026",
     "IMAX Sydney": "no Doomsday sessions yet \u00b7 booking open to 20 Jan 2027"
   },
   "last_error_alert": "2026-08-22T23:19:11.267429+00:00",
