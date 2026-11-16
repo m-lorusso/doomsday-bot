@@ -2166,6 +2166,12 @@
     "event:15762652",
     "event:15762834",
     "event:15762841",
+    "event:15764048",
+    "event:15764157",
+    "event:15764158",
+    "event:15764261",
+    "event:15764863",
+    "event:15764864",
     "hoyts:308808",
     "hoyts:308810",
     "hoyts:308812",
@@ -3491,7 +3497,7 @@
   ],
   "announced_on_sale": true,
   "chain_status": {
-    "Event": "on sale \u2014 2012 sessions",
+    "Event": "on sale \u2014 2017 sessions",
     "HOYTS": "on sale \u2014 1297 sessions"
   },
   "imax_failing_since": {},
@@ -3500,7 +3506,7 @@
     "IMAX Sydney": "no Doomsday sessions yet \u00b7 booking open to 20 Jan 2027"
   },
   "last_error_alert": "2026-08-22T23:19:11.267429+00:00",
-  "last_heartbeat": "2026-11-15T00:18:52.560350+00:00",
+  "last_heartbeat": "2026-11-16T03:09:06.221704+00:00",
   "on_sale": true,
   "telegram_offset": 134067330
 }
