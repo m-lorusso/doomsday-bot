@@ -2172,6 +2172,12 @@
     "event:15764261",
     "event:15764863",
     "event:15764864",
+    "event:15764966",
+    "event:15764967",
+    "event:15765854",
+    "event:15767354",
+    "event:15767355",
+    "event:15767426",
     "hoyts:308808",
     "hoyts:308810",
     "hoyts:308812",
@@ -2944,6 +2950,7 @@
     "hoyts:382953",
     "hoyts:382954",
     "hoyts:382955",
+    "hoyts:386602",
     "hoyts:453987",
     "hoyts:453991",
     "hoyts:455257",
@@ -3115,6 +3122,8 @@
     "hoyts:460154",
     "hoyts:460155",
     "hoyts:460203",
+    "hoyts:460585",
+    "hoyts:460589",
     "hoyts:462824",
     "hoyts:462825",
     "hoyts:462826",
@@ -3497,8 +3506,8 @@
   ],
   "announced_on_sale": true,
   "chain_status": {
-    "Event": "on sale \u2014 2017 sessions",
-    "HOYTS": "on sale \u2014 1297 sessions"
+    "Event": "on sale \u2014 2023 sessions",
+    "HOYTS": "on sale \u2014 1300 sessions"
   },
   "imax_failing_since": {},
   "imax_status": {
