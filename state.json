@@ -3563,7 +3563,7 @@
   "announced_on_sale": true,
   "chain_status": {
     "Event": "on sale \u2014 1998 sessions",
-    "HOYTS": "on sale \u2014 1305 sessions"
+    "HOYTS": "on sale \u2014 1139 sessions"
   },
   "imax_failing_since": {},
   "imax_status": {
@@ -3571,7 +3571,7 @@
     "IMAX Sydney": "no Doomsday sessions yet \u00b7 booking open to 20 Jan 2027"
   },
   "last_error_alert": "2026-08-22T23:19:11.267429+00:00",
-  "last_heartbeat": "2026-11-19T17:52:10.360433+00:00",
+  "last_heartbeat": "2026-11-20T22:00:14.052380+00:00",
   "on_sale": true,
   "telegram_offset": 134067330
 }
