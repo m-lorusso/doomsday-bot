@@ -2229,6 +2229,9 @@
     "event:15774255",
     "event:15774256",
     "event:15774273",
+    "event:15775192",
+    "event:15775193",
+    "event:15775194",
     "hoyts:308808",
     "hoyts:308810",
     "hoyts:308812",
@@ -3562,7 +3565,7 @@
   ],
   "announced_on_sale": true,
   "chain_status": {
-    "Event": "on sale \u2014 1998 sessions",
+    "Event": "on sale \u2014 2001 sessions",
     "HOYTS": "on sale \u2014 1305 sessions"
   },
   "imax_failing_since": {},
