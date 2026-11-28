@@ -3981,6 +3981,9 @@
     "hoyts:466435",
     "hoyts:466436",
     "hoyts:467461",
+    "hoyts:467474",
+    "hoyts:467477",
+    "hoyts:467488",
     "hoyts:467545",
     "hoyts:467547",
     "hoyts:467548",
@@ -4025,6 +4028,9 @@
     "hoyts:468332",
     "hoyts:468333",
     "hoyts:468334",
+    "hoyts:468336",
+    "hoyts:468340",
+    "hoyts:468341",
     "hoyts:512314",
     "hoyts:512315",
     "hoyts:512316",
@@ -4324,7 +4330,7 @@
   "announced_on_sale": true,
   "chain_status": {
     "Event": "on sale \u2014 2044 sessions",
-    "HOYTS": "on sale \u2014 2022 sessions"
+    "HOYTS": "on sale \u2014 2028 sessions"
   },
   "imax_failing_since": {},
   "imax_status": {
